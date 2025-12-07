@@ -62,7 +62,7 @@ const ImageSymptomInput = ({ onAnalysis, isAnalyzing, setIsAnalyzing }: ImageSym
       const formData = new FormData();
       formData.append('file', selectedImage);
 
-      const response = await fetch('http://127.0.0.1:8000/predict_image', {
+      const response = await fetch(`${import.meta.env.VITE_ML_API_URL || 'http://127.0.0.1:8000'}/predict_image`, {
         method: 'POST',
         body: formData,
       });

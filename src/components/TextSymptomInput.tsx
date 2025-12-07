@@ -35,7 +35,7 @@ const TextSymptomInput = ({ onAnalysis, isAnalyzing, setIsAnalyzing }: TextSympt
     setNormalizedText("");
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/predict_text", {
+      const response = await fetch(`${import.meta.env.VITE_ML_API_URL || 'http://127.0.0.1:8000'}/predict_text`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
