@@ -29,7 +29,7 @@ const PatientDashboard = () => {
   useEffect(() => {
     const fetchPatientName = async () => {
       if (!user) return;
-      
+
       try {
         const { data, error } = await supabase
           .from("patients")

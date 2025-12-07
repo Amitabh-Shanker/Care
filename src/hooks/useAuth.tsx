@@ -13,7 +13,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   getUserProfile: () => Promise<any>;
   checkQuestionnaireCompleted: () => Promise<boolean>;
-  addRole: (role: 'patient' | 'doctor') => Promise<{ error: any }>;
+  addRole: (role: 'patient' | 'doctor', doctorData?: { firstName: string; lastName: string; email: string; licenseNumber: string; specialty: string }) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-        
+
         // Fetch user roles when session changes
         if (session?.user) {
           setTimeout(() => {
@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      
+
       if (session?.user) {
         fetchUserRoles(session.user.id);
       }
@@ -133,7 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const getUserProfile = async () => {
     if (!user) return null;
-    
+
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -150,7 +150,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const checkQuestionnaireCompleted = async () => {
     if (!user) return false;
-    
+
     const { data, error } = await supabase
       .from('patient_questionnaire')
       .select('id')
@@ -165,24 +165,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return !!data;
   };
 
-  const addRole = async (role: 'patient' | 'doctor') => {
+  const addRole = async (role: 'patient' | 'doctor', doctorData?: { firstName: string; lastName: string; email: string; licenseNumber: string; specialty: string }) => {
     if (!user) {
       return { error: { message: 'User must be logged in' } };
     }
 
-    const { error } = await supabase
+    // Insert into user_roles table
+    const { error: roleError } = await supabase
       .from('user_roles')
       .insert({ user_id: user.id, role })
       .select()
       .single();
 
-    if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
-      return { error };
+    if (roleError) {
+      // Ignore duplicate key error (role already exists)
+      if (!roleError.message?.includes('duplicate')) {
+        toast({
+          title: "Error",
+          description: roleError.message,
+          variant: "destructive"
+        });
+        return { error: roleError };
+      }
+    }
+
+    // If adding doctor role, also insert into doctors table
+    if (role === 'doctor' && doctorData) {
+      const { error: doctorError } = await supabase
+        .from('doctors')
+        .upsert({
+          user_id: user.id,
+          first_name: doctorData.firstName,
+          last_name: doctorData.lastName,
+          email: doctorData.email,
+          medical_license_number: doctorData.licenseNumber,
+          specialty: doctorData.specialty
+        }, { onConflict: 'user_id' });
+
+      if (doctorError) {
+        console.error('Error inserting doctor:', doctorError);
+        toast({
+          title: "Error",
+          description: "Failed to create doctor profile: " + doctorError.message,
+          variant: "destructive"
+        });
+        return { error: doctorError };
+      }
     }
 
     // Refresh user roles

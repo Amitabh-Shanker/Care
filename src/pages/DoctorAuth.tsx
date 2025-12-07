@@ -85,7 +85,14 @@ const DoctorAuth = () => {
       // Check if user is already signed in
       if (user) {
         // Add doctor role to existing user
-        const { error } = await addRole('doctor');
+        const doctorData = {
+          firstName: validation.firstName,
+          lastName: validation.lastName,
+          email: validation.email,
+          licenseNumber: validation.medicalLicenseNumber,
+          specialty: validation.specialty
+        };
+        const { error } = await addRole('doctor', doctorData);
         if (error) {
           setErrors({ general: error.message });
         } else {
@@ -115,7 +122,14 @@ const DoctorAuth = () => {
               });
             } else {
               // Successfully signed in, add doctor role
-              await addRole('doctor');
+              const doctorData = {
+                firstName: validation.firstName,
+                lastName: validation.lastName,
+                email: validation.email,
+                licenseNumber: validation.medicalLicenseNumber,
+                specialty: validation.specialty
+              };
+              await addRole('doctor', doctorData);
               navigate('/doctor-dashboard');
             }
           } else {

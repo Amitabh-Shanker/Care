@@ -7,14 +7,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Loader2, 
-  Heart, 
-  User, 
-  Calendar, 
-  Pill, 
-  AlertTriangle, 
-  FileText, 
+import {
+  Loader2,
+  Heart,
+  User,
+  Calendar,
+  Pill,
+  AlertTriangle,
+  FileText,
   Activity,
   Plane,
   Stethoscope,
@@ -31,6 +31,7 @@ const QuestionnaireOnboarding = () => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -38,21 +39,42 @@ const QuestionnaireOnboarding = () => {
     const checkExistingQuestionnaire = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        
+
         if (!user) {
           navigate('/patient-auth');
           return;
         }
 
+        // Check URL for edit mode
+        const urlParams = new URLSearchParams(window.location.search);
+        const editMode = urlParams.get('edit') === 'true';
+
         const { data, error } = await supabase
           .from('patient_questionnaire')
-          .select('id')
+          .select('*')
           .eq('patient_id', user.id)
           .maybeSingle();
 
         if (data) {
-          // Questionnaire already completed, redirect to dashboard
-          navigate('/patient-dashboard');
+          if (editMode) {
+            // Edit mode: load existing data into form
+            setIsEditMode(true);
+            setAnswers({
+              age: data.age?.toString() || "",
+              gender: data.gender || "",
+              chronic_conditions: data.chronic_conditions || "",
+              medications: data.medications || "",
+              allergies: data.allergies || "",
+              primary_concern: data.primary_concern || "",
+              recent_travel: data.recent_travel || "",
+              past_surgeries: data.past_surgeries || "",
+              substance_use: data.substance_use || "",
+              doctor_contact_preference: data.doctor_contact_preference ? "Yes" : "No"
+            });
+          } else {
+            // Not edit mode and questionnaire exists, redirect to dashboard
+            navigate('/patient-dashboard');
+          }
         }
       } catch (error) {
         console.error('Error checking questionnaire:', error);
@@ -180,7 +202,7 @@ const QuestionnaireOnboarding = () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         throw new Error("No user found");
       }
@@ -202,13 +224,13 @@ const QuestionnaireOnboarding = () => {
 
       const { error } = await supabase
         .from('patient_questionnaire')
-        .insert(questionnaireData);
+        .upsert(questionnaireData, { onConflict: 'patient_id' });
 
       if (error) throw error;
 
       toast({
         title: "Success",
-        description: "Questionnaire completed successfully!",
+        description: isEditMode ? "Questionnaire updated successfully!" : "Questionnaire completed successfully!",
       });
 
       navigate('/patient-dashboard');
@@ -275,7 +297,7 @@ const QuestionnaireOnboarding = () => {
             }}
           />
         ))}
-        
+
         {/* Sparkle effects */}
         {[...Array(8)].map((_, i) => (
           <motion.div
@@ -333,7 +355,7 @@ const QuestionnaireOnboarding = () => {
                   </CardDescription>
                 </div>
               </motion.div>
-              
+
               {/* Enhanced Progress Bar */}
               <div className="space-y-2">
                 <div className="flex justify-between text-sm text-muted-foreground">
@@ -384,7 +406,7 @@ const QuestionnaireOnboarding = () => {
                     </Label>
                   </div>
                 </div>
-                
+
                 {/* Input Fields */}
                 <div className="space-y-4">
                   {currentQ.type === "number" && (
@@ -439,13 +461,13 @@ const QuestionnaireOnboarding = () => {
                             whileTap={{ scale: 0.98 }}
                           >
                             <div className="flex items-center space-x-3 p-4 rounded-xl border-2 border-muted hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer group">
-                              <RadioGroupItem 
-                                value={option} 
+                              <RadioGroupItem
+                                value={option}
                                 id={option}
                                 className="border-2 group-hover:border-primary"
                               />
-                              <Label 
-                                htmlFor={option} 
+                              <Label
+                                htmlFor={option}
                                 className="cursor-pointer flex-1 text-base font-medium group-hover:text-primary transition-colors"
                               >
                                 {option}
@@ -467,8 +489,8 @@ const QuestionnaireOnboarding = () => {
               transition={{ duration: 0.4, delay: 0.2 }}
               className="flex justify-between items-center pt-6 border-t border-border"
             >
-              <motion.div 
-                whileHover={{ scale: 1.05, x: -5 }} 
+              <motion.div
+                whileHover={{ scale: 1.05, x: -5 }}
                 whileTap={{ scale: 0.95 }}
               >
                 <Button
@@ -489,8 +511,8 @@ const QuestionnaireOnboarding = () => {
                 <span>{questions.length}</span>
               </div>
 
-              <motion.div 
-                whileHover={{ scale: 1.05, x: 5 }} 
+              <motion.div
+                whileHover={{ scale: 1.05, x: 5 }}
                 whileTap={{ scale: 0.95 }}
               >
                 <Button
