@@ -50,6 +50,10 @@ export const AppointmentManagement = ({ doctorId }: AppointmentManagementProps) 
 
   const fetchAppointments = async () => {
     try {
+      console.log('='.repeat(70));
+      console.log('🔍 Fetching appointments for doctor ID:', doctorId);
+      console.log('📊 Current filter:', filter);
+
       // First get appointments
       let appointmentsQuery = supabase
         .from('appointments')
@@ -64,19 +68,29 @@ export const AppointmentManagement = ({ doctorId }: AppointmentManagementProps) 
 
       const { data: appointmentsData, error: appointmentsError } = await appointmentsQuery;
 
+      console.log('📋 Raw appointments data:', appointmentsData);
+      console.log('❌ Appointments error:', appointmentsError);
+      console.log('📊 Number of appointments found:', appointmentsData?.length || 0);
+
       if (appointmentsError) throw appointmentsError;
 
       if (!appointmentsData || appointmentsData.length === 0) {
+        console.log('⚠️ No appointments found for this doctor');
         setAppointments([]);
         return;
       }
 
       // Get patient details
       const patientIds = [...new Set(appointmentsData.map(apt => apt.patient_id))];
+      console.log('👥 Patient IDs to fetch:', patientIds);
+
       const { data: patientsData, error: patientsError } = await supabase
         .from('patients')
         .select('user_id, first_name, last_name')
         .in('user_id', patientIds);
+
+      console.log('👤 Patients data:', patientsData);
+      console.log('❌ Patients error:', patientsError);
 
       if (patientsError) throw patientsError;
 
@@ -89,8 +103,12 @@ export const AppointmentManagement = ({ doctorId }: AppointmentManagementProps) 
         };
       });
 
+      console.log('✅ Final appointments with patients:', appointmentsWithPatients);
+      console.log('='.repeat(70));
+
       setAppointments(appointmentsWithPatients as Appointment[]);
     } catch (error: any) {
+      console.error('💥 Error in fetchAppointments:', error);
       toast({
         title: "Error",
         description: "Failed to fetch appointments: " + (error.message || "Unknown error"),

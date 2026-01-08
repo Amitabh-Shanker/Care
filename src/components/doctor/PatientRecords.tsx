@@ -73,38 +73,72 @@ export const PatientRecords = ({ doctorId }: PatientRecordsProps) => {
   }, [selectedPatient]);
 
   const fetchPatients = async () => {
-    // Get unique patients from appointments
-    const { data, error } = await supabase
-      .from('appointments')
-      .select(`
-        patient_id,
-        patient:profiles!appointments_patient_id_fkey (
-          user_id,
-          first_name,
-          last_name
-        )
-      `)
-      .eq('doctor_id', doctorId);
+    try {
+      console.log('Fetching patients for doctor:', doctorId);
 
-    if (error) {
+      // Step 1: Get all appointments for this doctor
+      const { data: appointments, error: appointmentsError } = await supabase
+        .from('appointments')
+        .select('patient_id')
+        .eq('doctor_id', doctorId);
+
+      console.log('Appointments fetched:', { appointments, appointmentsError });
+
+      if (appointmentsError) {
+        console.error('Error fetching appointments:', appointmentsError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch appointments",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!appointments || appointments.length === 0) {
+        console.log('No appointments found for this doctor');
+        setPatients([]);
+        return;
+      }
+
+      // Step 2: Get unique patient IDs
+      const patientIds = [...new Set(appointments.map(apt => apt.patient_id))];
+      console.log('Unique patient IDs:', patientIds);
+
+      // Step 3: Fetch patient data for these IDs
+      const { data: profiles, error: profilesError } = await supabase
+        .from('patients')
+        .select('user_id, first_name, last_name')
+        .in('user_id', patientIds);
+
+      console.log('Profiles fetched:', { profiles, profilesError });
+
+      if (profilesError) {
+        console.error('Error fetching patient profiles:', profilesError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch patient profiles",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Step 4: Set the patients
+      const patientList = (profiles || []).map(profile => ({
+        user_id: profile.user_id,
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || ''
+      }));
+
+      console.log('Final patient list:', patientList);
+      setPatients(patientList);
+    } catch (err) {
+      console.error('Unexpected error in fetchPatients:', err);
       toast({
         title: "Error",
-        description: "Failed to fetch patients",
+        description: "An unexpected error occurred while fetching patients",
         variant: "destructive",
       });
-      return;
     }
-
-    // Remove duplicates
-    const uniquePatients = data?.reduce((acc: Patient[], curr: any) => {
-      const exists = acc.find(p => p.user_id === curr.patient?.user_id);
-      if (!exists && curr.patient) {
-        acc.push(curr.patient);
-      }
-      return acc;
-    }, []);
-
-    setPatients(uniquePatients || []);
   };
 
   const fetchRecords = async () => {

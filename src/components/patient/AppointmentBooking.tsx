@@ -48,7 +48,7 @@ export const AppointmentBooking = ({ analysisData, onSuccess }: AppointmentBooki
       // Check if user is authenticated
       const { data: { user: authUser } } = await supabase.auth.getUser();
       console.log("Current authenticated user:", authUser?.id || "Not logged in");
-      
+
       if (!authUser) {
         console.warn("User is not authenticated - cannot fetch doctors");
         toast.error("Please log in to view doctors");
@@ -76,14 +76,14 @@ export const AppointmentBooking = ({ analysisData, onSuccess }: AppointmentBooki
 
       console.log("Doctors fetched successfully:", data);
       console.log("Number of doctors:", data?.length || 0);
-      
+
       if (data && data.length === 0) {
         console.warn("No doctors found. This might be due to:");
         console.warn("1. RLS policy not applied - Run the migration: 20251120170000_allow_patients_view_doctors.sql");
         console.warn("2. Doctors table is empty");
         console.warn("3. RLS policy is blocking access");
       }
-      
+
       setDoctors(data || []);
     } catch (err) {
       console.error("Unexpected error fetching doctors:", err);
@@ -104,6 +104,15 @@ export const AppointmentBooking = ({ analysisData, onSuccess }: AppointmentBooki
     setIsSubmitting(true);
 
     try {
+      console.log('📅 Booking appointment with data:', {
+        patient_id: user.id,
+        doctor_id: selectedDoctor,
+        appointment_date: appointmentDate,
+        appointment_time: appointmentTime,
+        reason: reason,
+        status: "pending",
+      });
+
       const { error } = await supabase.from("appointments").insert({
         patient_id: user.id,
         doctor_id: selectedDoctor,
@@ -113,16 +122,21 @@ export const AppointmentBooking = ({ analysisData, onSuccess }: AppointmentBooki
         status: "pending",
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error booking appointment:', error);
+        throw error;
+      }
+
+      console.log('✅ Appointment booked successfully!');
 
       toast.success("Appointment booked successfully!");
-      
+
       // Reset form
       setSelectedDoctor("");
       setAppointmentDate("");
       setAppointmentTime("");
       setReason("");
-      
+
       if (onSuccess) onSuccess();
     } catch (error: any) {
       console.error("Error booking appointment:", error);

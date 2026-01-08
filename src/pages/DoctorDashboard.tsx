@@ -28,16 +28,23 @@ const DoctorDashboard = () => {
   useEffect(() => {
     const fetchDoctorName = async () => {
       if (!user) return;
-      
+
+      console.log('👨‍⚕️ Logged in user ID:', user.id);
+
       try {
         const { data, error } = await supabase
           .from("doctors")
-          .select("first_name, last_name")
+          .select("user_id, first_name, last_name")
           .eq("user_id", user.id)
           .single();
 
+        console.log('👨‍⚕️ Doctor record:', data);
+        console.log('❌ Doctor fetch error:', error);
+
         if (data) {
           setDoctorName(`${data.first_name} ${data.last_name}`);
+        } else {
+          console.warn('⚠️ No doctor record found for user ID:', user.id);
         }
       } catch (error) {
         console.error("Error fetching doctor name:", error);
